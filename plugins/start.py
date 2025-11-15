@@ -135,11 +135,13 @@ async def help_command(client, message):
             "/batch - Bulk extraction\n"
             "/plan - View premium plans\n"
             "/myplan - Check your plan\n"
+            "/pay - Buy premium\n"
             "/settings - Configure settings\n"
             "/setbot - Add custom file bot\n"
             "/rembot - Remove custom bot\n"
             "/session - Generate session string\n"
             "/cancel - Cancel process\n"
+            "/status - View status\n"
             "/stop - Stop batch\n\n"
             "👑 Owner Commands:\n"
             "/add userID - Add to premium\n"
@@ -162,11 +164,13 @@ async def help_command(client, message):
             "/batch - Bulk extraction\n"
             "/plan - View premium plans\n"
             "/myplan - Check your plan details\n"
+            "/pay - Buy premium\n"
             "/settings - Configure settings\n"
             "/setbot - Add custom file bot\n"
             "/rembot - Remove custom bot\n"
             "/session - Generate session string\n"
             "/cancel - Cancel process\n"
+            "/status - View status\n"
             "/stop - Stop batch\n\n"
             "💡 Pro Tip:\n"
             "Just forward any message or send a Telegram link!"
@@ -185,8 +189,6 @@ async def plan(client, message):
     
     plan_text = (
         "💎 Premium Plans:\n\n"
-        "💰 Price: $2 or 200 INR\n"
-        "💳 Payment: Amazon Gift Card\n\n"
         "✨ Premium Features:\n"
         "• Download up to 100,000 files per batch\n"
         "• Access to /batch and /bulk modes\n"
@@ -200,7 +202,7 @@ async def plan(client, message):
     ])
     await message.reply_text(plan_text, reply_markup=buttons)
 
-@app.on_message(filters.command(["batch", "login", "logout", "myplan", "settings", "session"]) & filters.private)
+@app.on_message(filters.command(["batch", "login", "logout", "pay", "plan", "myplan", "setbot", "rembot", "myplan", "session"]) & filters.private)
 async def force_sub_check(client, message):
     join = await subscribe(client, message)
     if join == 1:

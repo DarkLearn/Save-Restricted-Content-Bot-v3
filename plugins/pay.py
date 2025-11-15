@@ -1,13 +1,12 @@
-# Copyright (c) 2025 devgagan : https://github.com/devgaganin.  
-# Licensed under the GNU General Public License v3.0.  
-# See LICENSE file in the repository root for full license text.
-
 from pyrogram import filters as f
 from shared_client import app
 from pyrogram.types import InlineKeyboardButton as B, InlineKeyboardMarkup as M, LabeledPrice as P, PreCheckoutQuery as Q
 from datetime import timedelta as T
 from utils.func import add_premium_user as apu
-from config import P0
+from config import P0, OWNER_ID
+import logging
+
+logger = logging.getLogger(__name__)
 
 @app.on_message(f.command("pay") & f.private)
 async def p(c, m):
@@ -47,6 +46,7 @@ async def i(c, q):
         )
         await q.answer("Invoice sent 💫")
     except Exception as e:
+        logger.error(f"Invoice error: {e}")
         await q.answer(f"Err: {e}", show_alert=True)
 
 @app.on_pre_checkout_query()
@@ -59,26 +59,88 @@ async def sp(c, m):
     u = m.from_user.id
     pl = p.invoice_payload.split("_")[0]
     pi = P0[pl]
-    ok, r = await apu(u, pi['du'], pi['u'])
-    if ok:
-        e = r + T(hours=5, minutes=30)
-        d = e.strftime('%d-%b-%Y %I:%M:%S %p')
-        await m.reply_text(
-            f"✅ **Paid!**\n\n"
-            f"💎 Premium {pi['l']} active!\n"
-            f"⭐ {p.total_amount}\n"
-            f"⏰ Till: {d} IST\n"
-            f"🔖 Txn: `{p.telegram_payment_charge_id}`"
-        )
-        for o in OWNER_ID:
-            await c.send_message(f"User {u} just purchased the premium, txn id is {p.telegram_payment_charge_id}.")
-    else:
-        await m.reply_text(
-            f"⚠️ Paid but premium failed.\nTxn `{p.telegram_payment_charge_id}`"
-        )
-        for o in OWNER_ID:
-            await c.send_message(o,
-                f"⚠️ Issue!\nUser {u}\nPlan {pi['l']}\nTxn {p.telegram_payment_charge_id}\nErr {r}"
+    
+    try:
+        logger.info(f"Payment received from user {u}, plan {pl}")
+        ok, r = await apu(u, pi['du'], pi['u'])
+        
+        if ok:
+            e = r + T(hours=5, minutes=30)
+            d = e.strftime('%d-%b-%Y %I:%M:%S %p')
+            await m.reply_text(
+                f"✅ **Payment Successful!**\n\n"
+                f"💎 Premium {pi['l']} activated!\n"
+                f"⭐ Amount: {p.total_amount} Stars\n"
+                f"⏰ Valid till: {d} IST\n"
+                f"🔖 Transaction ID:\n`{p.telegram_payment_charge_id}`\n\n"
+                f"Thank you for your purchase! 🎉"
             )
-
-
+            logger.info(f"Premium added successfully for user {u}")
+            
+            # Notify owner
+            for o in OWNER_ID:
+                try:
+                    await c.send_message(o,
+                        f"💰 **New Premium Purchase**\n\n"
+                        f"👤 User ID: `{u}`\n"
+                        f"💎 Plan: {pi['l']}\n"
+                        f"⭐ Amount: {p.total_amount} Stars\n"
+                        f"🔖 Txn ID: `{p.telegram_payment_charge_id}`\n"
+                        f"⏰ Expiry: {d} IST"
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to notify owner {o}: {e}")
+        else:
+            # Premium activation failed
+            await m.reply_text(
+                f"⚠️ **Payment Received But Premium Activation Failed**\n\n"
+                f"💰 Your {p.total_amount} Stars payment was successful\n"
+                f"⚠️ However, premium couldn't be activated automatically\n\n"
+                f"📞 **Action Required:**\n"
+                f"Contact admin with this transaction ID:\n"
+                f"`{p.telegram_payment_charge_id}`\n\n"
+                f"Your premium will be activated manually within 24 hours.\n"
+                f"Error: `{r}`"
+            )
+            logger.error(f"Premium activation failed for user {u}: {r}")
+            
+            # Alert owner with error details
+            for o in OWNER_ID:
+                try:
+                    await c.send_message(o,
+                        f"🚨 **PREMIUM ACTIVATION FAILED**\n\n"
+                        f"👤 User ID: `{u}`\n"
+                        f"💎 Plan: {pi['l']}\n"
+                        f"⭐ Amount: {p.total_amount} Stars\n"
+                        f"🔖 Txn ID: `{p.telegram_payment_charge_id}`\n"
+                        f"❌ Error: `{r}`\n\n"
+                        f"**ACTION NEEDED:**\n"
+                        f"Use `/add {u}` to manually activate premium"
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to alert owner {o}: {e}")
+                    
+    except Exception as e:
+        logger.exception(f"Critical error in payment handler for user {u}")
+        await m.reply_text(
+            f"⚠️ **System Error Occurred**\n\n"
+            f"Your payment was successful but we encountered a technical issue.\n\n"
+            f"📞 Contact admin immediately with this info:\n"
+            f"🔖 Transaction ID: `{p.telegram_payment_charge_id}`\n"
+            f"👤 Your User ID: `{u}`\n\n"
+            f"Premium will be activated manually."
+        )
+        
+        # Critical error notification to owner
+        for o in OWNER_ID:
+            try:
+                await c.send_message(o,
+                    f"💥 **CRITICAL PAYMENT ERROR**\n\n"
+                    f"👤 User: `{u}`\n"
+                    f"🔖 Txn: `{p.telegram_payment_charge_id}`\n"
+                    f"⭐ Amount: {p.total_amount} Stars\n"
+                    f"❌ Exception: `{str(e)}`\n\n"
+                    f"**URGENT:** Manual activation required"
+                )
+            except Exception as notify_error:
+                logger.error(f"Failed to send critical alert: {notify_error}")
