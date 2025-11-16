@@ -1,3 +1,4 @@
+# Utility Functions - Helper functions for bot operations
 import concurrent.futures
 import time
 import os
