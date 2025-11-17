@@ -4,8 +4,10 @@ from pyrogram.errors import UserNotParticipant
 from pyrogram.types import BotCommand, InlineKeyboardButton, InlineKeyboardMarkup
 from config import LOG_GROUP, OWNER_ID, FORCE_SUB
 
+
 # Store the invite link globally (generated only once)
 INVITE_LINK = None
+
 
 async def get_invite_link():
     """Get or create invite link - only called once"""
@@ -13,6 +15,7 @@ async def get_invite_link():
     if INVITE_LINK is None:
         INVITE_LINK = await app.export_chat_invite_link(FORCE_SUB)
     return INVITE_LINK
+
 
 async def subscribe(app, message):
     if FORCE_SUB:
@@ -32,6 +35,7 @@ async def subscribe(app, message):
         except Exception as ggn:
             await message.reply_text(f"⚠️ Something went wrong:\n`{ggn}`")
             return 1
+
 
 @app.on_message(filters.command("start") & filters.private)
 async def start_command(client, message):
@@ -85,6 +89,7 @@ async def start_command(client, message):
     except:
         await message.reply_text(text=welcome_text, reply_markup=buttons)
 
+
 @app.on_message(filters.command("set"))
 async def set(_, message):
     if message.from_user.id not in OWNER_ID:
@@ -115,6 +120,7 @@ async def set(_, message):
         BotCommand("restart", "Restart the bot")
     ])
     await message.reply("✅ Commands configured successfully")
+
 
 @app.on_message(filters.command("help") & filters.private)
 async def help_command(client, message):
@@ -181,6 +187,7 @@ async def help_command(client, message):
     ])
     await message.reply_text(help_text, reply_markup=buttons)
 
+
 @app.on_message(filters.command("plan") & filters.private)
 async def plan(client, message):
     join = await subscribe(client, message)
@@ -202,8 +209,5 @@ async def plan(client, message):
     ])
     await message.reply_text(plan_text, reply_markup=buttons)
 
-@app.on_message(filters.command(["batch", "login", "logout", "pay", "plan", "myplan", "setbot", "rembot", "myplan", "session"]) & filters.private)
-async def force_sub_check(client, message):
-    join = await subscribe(client, message)
-    if join == 1:
-        return
+
+# ❌ YE LAST FUNCTION REMOVE KAR DIYA - YE PROBLEM THA
