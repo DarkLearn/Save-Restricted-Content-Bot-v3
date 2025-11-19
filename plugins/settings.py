@@ -352,7 +352,7 @@ async def cancel_conversation(event):
         del active_conversations[user_id]
 
 
-@gf.on(events.NewMessage(func=lambda e: e.message.text and not e.message.text.startswith('/')))
+@gf.on(events.NewMessage(func=lambda e: (e.message.text and not e.message.text.startswith('/')) or e.message.photo or e.message.document))
 async def handle_conversation_input(event):
     user_id = event.sender_id
     if user_id not in active_conversations:
