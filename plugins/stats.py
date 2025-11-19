@@ -9,6 +9,7 @@ logging.basicConfig(format=
 logger = logging.getLogger('teamspy')
 
 
+
 @bot_client.on(events.NewMessage(pattern='/status'))
 async def status_handler(event):
     if not await is_private_chat(event):
@@ -45,83 +46,7 @@ async def status_handler(event):
         f"**Premium:** {premium_status}"
     )
 
-@bot_client.on(events.NewMessage(pattern='/transfer'))
-async def transfer_premium_handler(event):
-    if not await is_private_chat(event):
-        await event.respond(
-            'This command can only be used in private chats for security reasons.'
-            )
-        return
-    user_id = event.sender_id
-    sender = await event.get_sender()
-    sender_name = get_display_name(sender)
-    if not await is_premium_user(user_id):
-        await event.respond(
-            "❌ You don't have a premium subscription to transfer.")
-        return
-    args = event.text.split()
-    if len(args) != 2:
-        await event.respond(
-            'Usage: /transfer user_id\nExample: /transfer 123456789')
-        return
-    try:
-        target_user_id = int(args[1])
-    except ValueError:
-        await event.respond(
-            '❌ Invalid user ID. Please provide a valid numeric user ID.')
-        return
-    if target_user_id == user_id:
-        await event.respond('❌ You cannot transfer premium to yourself.')
-        return
-    if await is_premium_user(target_user_id):
-        await event.respond(
-            '❌ The target user already has a premium subscription.')
-        return
-    try:
-        premium_details = await get_premium_details(user_id)
-        if not premium_details:
-            await event.respond('❌ Error retrieving your premium details.')
-            return
-        target_name = 'Unknown'
-        try:
-            target_entity = await bot_client.get_entity(target_user_id)
-            target_name = get_display_name(target_entity)
-        except Exception as e:
-            logger.warning(f'Could not get target user name: {e}')
-        now = datetime.now()
-        expiry_date = premium_details['subscription_end']
-        await premium_users_collection.update_one({'user_id':
-            target_user_id}, {'$set': {'user_id': target_user_id,
-            'subscription_start': now, 'subscription_end': expiry_date,
-            'expireAt': expiry_date, 'transferred_from': user_id,
-            'transferred_from_name': sender_name}}, upsert=True)
-        await premium_users_collection.delete_one({'user_id': user_id})
-        expiry_ist = expiry_date + timedelta(hours=5, minutes=30)
-        formatted_expiry = expiry_ist.strftime('%d-%b-%Y %I:%M:%S %p')
-        await event.respond(
-            f'✅ Premium subscription successfully transferred to {target_name} ({target_user_id}). Your premium access has been removed.'
-            )
-        try:
-            await bot_client.send_message(target_user_id,
-                f'🎁 You have received a premium subscription transfer from {sender_name} ({user_id}). Your premium is valid until {formatted_expiry} (IST).'
-                )
-        except Exception as e:
-            logger.error(f'Could not notify target user {target_user_id}: {e}')
-        try:
-            owner_id = int(OWNER_ID) if isinstance(OWNER_ID, str
-                ) else OWNER_ID[0] if isinstance(OWNER_ID, list) else OWNER_ID
-            await bot_client.send_message(owner_id,
-                f'♻️ Premium Transfer: {sender_name} ({user_id}) has transferred their premium to {target_name} ({target_user_id}). Expiry: {formatted_expiry}'
-                )
-        except Exception as e:
-            logger.error(f'Could not notify owner about premium transfer: {e}')
-        return
-    except Exception as e:
-        logger.error(
-            f'Error transferring premium from {user_id} to {target_user_id}: {e}'
-            )
-        await event.respond(f'❌ Error transferring premium: {str(e)}')
-        return
+
 @bot_client.on(events.NewMessage(pattern='/rem'))
 async def remove_premium_handler(event):
     user_id = event.sender_id

@@ -6,12 +6,12 @@ import os
 import string
 import random
 from shared_client import client as gf
-from config import OWNER_ID
-from utils.func import get_user_data_key, save_user_data, users_collection
+from utils.func import get_user_data_key, save_user_data, users_collection, get_user_data
+
 
 VIDEO_EXTENSIONS = {
     'mp4', 'mkv', 'avi', 'mov', 'wmv', 'flv', 'webm',
-    'mpeg', 'mpg', '3gp'
+    'mpeg', 'mpg', '3gp', 'ts'
 }
 
 active_conversations = {}
@@ -23,27 +23,111 @@ async def settings_command(event):
     await send_settings_message(event.chat_id, user_id)
 
 
-async def send_settings_message(chat_id, user_id):
-    buttons = [
-        [Button.inline('🎯 Set Upload Channel', b'setchat')],
-        [Button.inline('✏️ Set Rename Tag', b'setrename')],
-        [Button.inline('💬 Set Custom Caption', b'setcaption')],
-        [Button.inline('🔄 Replace Words', b'setreplacement')],
-        [Button.inline('🗑️ Delete Words', b'delete')],
-        [Button.inline('🖼️ Set Thumbnail', b'setthumb')],
-        [Button.inline('❌ Remove Thumbnail', b'remthumb')],
-        [Button.inline('🔑 Add Session', b'addsession')],
-        [Button.inline('🚪 Logout Session', b'logout')],
-        [Button.inline('♻️ Reset All Settings', b'reset')],
-        [Button.url('📞 Contact Support', 'https://t.me/anoncracks_bot')]
-    ]
-    await gf.send_message(
-        chat_id, 
+async def send_settings_message(chat_id, user_id, edit_event=None):
+    """
+    Send or edit settings message
+    edit_event: If provided, edits that message instead of sending new one
+    """
+    # FETCH current user settings
+    user_data = await get_user_data(user_id)
+    
+    # Check what's configured
+    has_chat = user_data and user_data.get('chat_id')
+    has_rename = user_data and user_data.get('rename_tag')
+    has_caption = user_data and user_data.get('caption')
+    has_replacement = user_data and user_data.get('replacement_words')
+    has_delete = user_data and user_data.get('delete_words')
+    has_thumb = os.path.exists(f'{user_id}.jpg')
+    has_session = user_data and user_data.get('session_string')
+    
+    # BUILD status message
+    status_lines = ["📊 **CURRENT SETTINGS:**\n"]
+    
+    if has_rename:
+        status_lines.append(f"• Rename Tag: `{user_data.get('rename_tag')}` ✓")
+    else:
+        status_lines.append("• Rename Tag: Not set")
+    
+    if has_chat:
+        status_lines.append(f"• Upload Chat: `{user_data.get('chat_id')}` ✓")
+    else:
+        status_lines.append("• Upload Chat: Not set")
+    
+    if has_caption:
+        caption_preview = user_data.get('caption')[:30] + "..." if len(user_data.get('caption', '')) > 30 else user_data.get('caption', '')
+        status_lines.append(f"• Caption: `{caption_preview}` ✓")
+    else:
+        status_lines.append("• Caption: Not set")
+    
+    if has_delete:
+        delete_count = len(user_data.get('delete_words', []))
+        status_lines.append(f"• Delete Words: {delete_count} words ✓")
+    else:
+        status_lines.append("• Delete Words: Not set")
+    
+    if has_replacement:
+        replace_count = len(user_data.get('replacement_words', {}))
+        status_lines.append(f"• Replacements: {replace_count} rules ✓")
+    else:
+        status_lines.append("• Replacements: Not set")
+    
+    if has_thumb:
+        status_lines.append("• Thumbnail: Set ✓")
+    else:
+        status_lines.append("• Thumbnail: Not set")
+    
+    if has_session:
+        status_lines.append("• Session: Active ✓")
+    else:
+        status_lines.append("• Session: Not logged in")
+    
+    status_text = "\n".join(status_lines)
+    
+    # CREATE buttons with tick marks
+    buttons = []
+    buttons.append([Button.inline(f'🎯 Set Upload Channel{"  ✓" if has_chat else ""}', b'setchat')])
+    buttons.append([Button.inline(f'✏️ Set Rename Tag{"  ✓" if has_rename else ""}', b'setrename')])
+    buttons.append([Button.inline(f'💬 Set Custom Caption{"  ✓" if has_caption else ""}', b'setcaption')])
+    buttons.append([Button.inline(f'🔄 Replace Words{"  ✓" if has_replacement else ""}', b'setreplacement')])
+    buttons.append([Button.inline(f'🗑️ Delete Words{"  ✓" if has_delete else ""}', b'delete')])
+    buttons.append([Button.inline(f'🖼️ Set Thumbnail{"  ✓" if has_thumb else ""}', b'setthumb')])
+    
+    if has_thumb:
+        buttons.append([Button.inline('❌ Remove Thumbnail', b'remthumb')])
+    
+    buttons.append([Button.inline(f'🔑 Add Session{"  ✓" if has_session else ""}', b'addsession')])
+    
+    if has_session:
+        buttons.append([Button.inline('🚪 Logout Session', b'logout')])
+    
+    buttons.append([Button.inline('📋 View All Settings', b'viewall')])
+    buttons.append([Button.inline('♻️ Reset All Settings', b'reset')])
+    buttons.append([Button.url('📞 Contact Support', 'https://t.me/anoncracks_bot')])
+    
+    message_text = (
         "⚙️ **Customize Your Download Settings**\n\n"
-        "Configure how your files will be processed and uploaded.\n\n"
-        "Select an option below:",
-        buttons=buttons
+        f"{status_text}\n\n"
+        "Select an option below to modify:"
     )
+    
+    # FIXED: Edit existing message or send new one
+    if edit_event:
+        await edit_event.edit(message_text, buttons=buttons)
+    else:
+        # Send thumbnail preview if exists
+        if has_thumb:
+            try:
+                await gf.send_file(
+                    chat_id,
+                    f'{user_id}.jpg',
+                    caption=message_text,
+                    buttons=buttons
+                )
+                return
+            except:
+                pass  # Fallback to text message
+        
+        await gf.send_message(chat_id, message_text, buttons=buttons)
 
 
 @gf.on(events.CallbackQuery)
@@ -138,17 +222,84 @@ Type /cancel to abort"""
         action = callback_actions[event.data]
         await start_conversation(event, user_id, action['type'], action['message'])
     
+    elif event.data == b'viewall':
+        # FIXED: Send as message instead of alert (no character limit)
+        user_data = await get_user_data(user_id)
+        
+        view_text = "📋 **ALL SETTINGS DETAILS**\n\n"
+        
+        # Rename tag
+        rename_tag = user_data.get('rename_tag', '') if user_data else ''
+        view_text += f"**Rename Tag:**\n`{rename_tag if rename_tag else 'Not set'}`\n\n"
+        
+        # Chat ID
+        chat_id = user_data.get('chat_id', '') if user_data else ''
+        view_text += f"**Upload Chat:**\n`{chat_id if chat_id else 'Not set'}`\n\n"
+        
+        # Caption
+        caption = user_data.get('caption', '') if user_data else ''
+        view_text += f"**Custom Caption:**\n{caption if caption else 'Not set'}\n\n"
+        
+        # Delete words
+        delete_words = user_data.get('delete_words', []) if user_data else []
+        if delete_words:
+            view_text += f"**Delete Words:**\n{', '.join(delete_words)}\n\n"
+        else:
+            view_text += "**Delete Words:**\nNot set\n\n"
+        
+        # Replacement words
+        replacements = user_data.get('replacement_words', {}) if user_data else {}
+        if replacements:
+            view_text += "**Replacement Rules:**\n"
+            for old, new in replacements.items():
+                view_text += f"  • '{old}' → '{new}'\n"
+            view_text += "\n"
+        else:
+            view_text += "**Replacement Rules:**\nNot set\n\n"
+        
+        # Thumbnail
+        has_thumb = os.path.exists(f'{user_id}.jpg')
+        view_text += f"**Thumbnail:**\n{'Set ✓' if has_thumb else 'Not set'}\n\n"
+        
+        # Session
+        has_session = user_data.get('session_string') if user_data else False
+        view_text += f"**Session:**\n{'Active ✓' if has_session else 'Not logged in'}"
+        
+        # Send as message, not alert
+        await event.respond(view_text)
+    
     elif event.data == b'logout':
         result = await users_collection.update_one(
             {'user_id': user_id},
             {'$unset': {'session_string': ''}}
         )
         if result.modified_count > 0:
-            await event.respond('✅ **Session Removed**\n\nYou have been logged out successfully.')
+            await event.answer('✅ Session Removed', alert=False)
+            # FIXED: Edit same message instead of sending new one
+            await send_settings_message(None, user_id, edit_event=event)
         else:
-            await event.respond('❌ **No Active Session**\n\nYou are not logged in.')
+            await event.answer('❌ No Active Session', alert=True)
     
     elif event.data == b'reset':
+        # Confirmation dialog
+        confirm_buttons = [
+            [Button.inline('✅ Yes, Reset All', b'reset_confirm')],
+            [Button.inline('❌ Cancel', b'reset_cancel')]
+        ]
+        await event.edit(
+            '⚠️ **Confirm Reset**\n\n'
+            'This will delete ALL your settings:\n'
+            '• Rename tag\n'
+            '• Upload chat\n'
+            '• Caption\n'
+            '• Delete words\n'
+            '• Replacements\n'
+            '• Thumbnail\n\n'
+            'Are you sure?',
+            buttons=confirm_buttons
+        )
+    
+    elif event.data == b'reset_confirm':
         try:
             await users_collection.update_one(
                 {'user_id': user_id},
@@ -163,20 +314,26 @@ Type /cancel to abort"""
             thumbnail_path = f'{user_id}.jpg'
             if os.path.exists(thumbnail_path):
                 os.remove(thumbnail_path)
-            await event.respond(
-                '✅ **Settings Reset**\n\n'
-                'All customization settings have been cleared.\n'
-                'Use /settings to configure again.'
-            )
+            
+            await event.answer('✅ All Settings Reset', alert=False)
+            # FIXED: Edit same message
+            await send_settings_message(None, user_id, edit_event=event)
         except Exception as e:
-            await event.respond(f'❌ **Error**\n\n{str(e)[:100]}')
+            await event.answer(f'❌ Error: {str(e)[:50]}', alert=True)
+    
+    elif event.data == b'reset_cancel':
+        await event.answer('✅ Cancelled', alert=False)
+        # FIXED: Edit same message
+        await send_settings_message(None, user_id, edit_event=event)
     
     elif event.data == b'remthumb':
         try:
             os.remove(f'{user_id}.jpg')
-            await event.respond('✅ **Thumbnail Removed**\n\nCustom thumbnail deleted successfully.')
+            await event.answer('✅ Thumbnail Removed', alert=False)
+            # FIXED: Edit same message
+            await send_settings_message(None, user_id, edit_event=event)
         except FileNotFoundError:
-            await event.respond('❌ **No Thumbnail Found**\n\nYou haven\'t set a thumbnail yet.')
+            await event.answer('❌ No Thumbnail Found', alert=True)
 
 
 async def start_conversation(event, user_id, conv_type, prompt_message):
@@ -195,10 +352,10 @@ async def cancel_conversation(event):
         del active_conversations[user_id]
 
 
-@gf.on(events.NewMessage())
+@gf.on(events.NewMessage(func=lambda e: e.message.text and not e.message.text.startswith('/')))
 async def handle_conversation_input(event):
     user_id = event.sender_id
-    if user_id not in active_conversations or event.message.text.startswith('/'):
+    if user_id not in active_conversations:
         return
         
     conv_type = active_conversations[user_id]['type']
@@ -223,10 +380,21 @@ async def handle_conversation_input(event):
 async def handle_setchat(event, user_id):
     try:
         chat_id = event.text.strip()
+        
+        if not (chat_id.startswith('-100') or (chat_id.lstrip('-').replace('/', '').isdigit())):
+            await event.respond(
+                '❌ **Invalid Chat ID Format**\n\n'
+                'Please use:\n'
+                '• `-1001234567890` (channel)\n'
+                '• `-1001234567890/12` (topic)'
+            )
+            return
+        
         await save_user_data(user_id, 'chat_id', chat_id)
         await event.respond(
             '✅ **Upload Channel Set**\n\n'
-            f'Files will now be uploaded to: `{chat_id}`'
+            f'Files will now be uploaded to: `{chat_id}`\n\n'
+            '💡 Use /settings to see updated status'
         )
     except Exception as e:
         await event.respond(f'❌ **Error**\n\n{str(e)[:100]}')
@@ -234,22 +402,32 @@ async def handle_setchat(event, user_id):
 
 async def handle_setrename(event, user_id):
     rename_tag = event.text.strip()
+    
+    dangerous_chars = ['/', '\\', '..', '\0']
+    for char in dangerous_chars:
+        rename_tag = rename_tag.replace(char, '')
+    
     await save_user_data(user_id, 'rename_tag', rename_tag)
     await event.respond(
         '✅ **Rename Tag Set**\n\n'
         f'Tag: `{rename_tag}`\n\n'
-        '**Example:** `video.mp4` → `video {rename_tag}.mp4`'
+        f'**Example:** `video.mp4` → `video {rename_tag}.mp4`\n\n'
+        '💡 Use /settings to see updated status'
     )
 
 
 async def handle_setcaption(event, user_id):
     caption = event.text
     await save_user_data(user_id, 'caption', caption)
-    await event.respond('✅ **Caption Saved**\n\nYour custom caption has been set.')
+    await event.respond(
+        '✅ **Caption Saved**\n\n'
+        'Your custom caption has been set.\n\n'
+        '💡 Use /settings to see updated status'
+    )
 
 
 async def handle_setreplacement(event, user_id):
-    match = re.match("'(.+)' '(.+)'", event.text)
+    match = re.match(r"'(.*?)'\s+'(.*?)'", event.text)
     if not match:
         await event.respond(
             "❌ **Invalid Format**\n\n"
@@ -272,7 +450,8 @@ async def handle_setreplacement(event, user_id):
             await event.respond(
                 f"✅ **Replacement Saved**\n\n"
                 f"`{word}` → `{replace_word}`\n\n"
-                f"All occurrences will be replaced."
+                f"All occurrences will be replaced.\n\n"
+                '💡 Use /settings to see all replacements'
             )
 
 
@@ -282,7 +461,8 @@ async def handle_addsession(event, user_id):
     await event.respond(
         '✅ **Session Added**\n\n'
         'Your Pyrogram session has been saved securely.\n'
-        'You can now access private channels.'
+        'You can now access private channels.\n\n'
+        '💡 Use /settings to see updated status'
     )
 
 
@@ -294,28 +474,30 @@ async def handle_deleteword(event, user_id):
     await event.respond(
         f"✅ **Words Added to Delete List**\n\n"
         f"Words: `{', '.join(words_to_delete)}`\n\n"
-        f"These will be removed from filenames."
+        f"These will be removed from filenames.\n\n"
+        '💡 Use /settings to see all delete words'
     )
 
 
 async def handle_setthumb(event, user_id):
-    if event.photo:
+    is_photo = event.photo or (event.document and 'image' in (event.document.mime_type or ''))
+    
+    if is_photo:
         temp_path = await event.download_media()
         try:
             thumb_path = f'{user_id}.jpg'
             if os.path.exists(thumb_path):
                 os.remove(thumb_path)
             os.rename(temp_path, thumb_path)
-            await event.respond('✅ **Thumbnail Saved**\n\nYour custom thumbnail is now active.')
+            await event.respond(
+                '✅ **Thumbnail Saved**\n\n'
+                'Your custom thumbnail is now active.\n\n'
+                '💡 Use /settings to see preview'
+            )
         except Exception as e:
             await event.respond(f'❌ **Error**\n\n{str(e)[:100]}')
     else:
         await event.respond('❌ **Invalid Input**\n\nPlease send a photo.')
-
-
-def generate_random_name(length=7):
-    characters = string.ascii_letters + string.digits
-    return ''.join(random.choice(characters) for _ in range(length))
 
 
 async def rename_file(file, sender, edit):
@@ -328,12 +510,8 @@ async def rename_file(file, sender, edit):
         if last_dot_index != -1 and last_dot_index != 0:
             ggn_ext = str(file)[last_dot_index + 1:]
             if ggn_ext.isalpha() and len(ggn_ext) <= 9:
-                if ggn_ext.lower() in VIDEO_EXTENSIONS:
-                    original_file_name = str(file)[:last_dot_index]
-                    file_extension = 'mp4'
-                else:
-                    original_file_name = str(file)[:last_dot_index]
-                    file_extension = ggn_ext
+                original_file_name = str(file)[:last_dot_index]
+                file_extension = ggn_ext
             else:
                 original_file_name = str(file)[:last_dot_index]
                 file_extension = 'mp4'
@@ -344,10 +522,15 @@ async def rename_file(file, sender, edit):
         for word in delete_words:
             original_file_name = original_file_name.replace(word, '')
         
+        original_file_name = ' '.join(original_file_name.split())
+        
         for word, replace_word in replacements.items():
             original_file_name = original_file_name.replace(word, replace_word)
         
-        new_file_name = f'{original_file_name} {custom_rename_tag}.{file_extension}'
+        if custom_rename_tag:
+            new_file_name = f'{original_file_name} {custom_rename_tag}.{file_extension}'
+        else:
+            new_file_name = f'{original_file_name}.{file_extension}'
         
         os.rename(file, new_file_name)
         return new_file_name
