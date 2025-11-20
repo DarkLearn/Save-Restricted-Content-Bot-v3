@@ -13,7 +13,7 @@ def dyk(pwd=M1, slt=I1, l=16):
         algorithm=hsh.SHA256(),
         length=l,
         salt=sl,
-        iterations=100000,
+        iterations=310000,
     )
     return kdf.derive(pw)
 

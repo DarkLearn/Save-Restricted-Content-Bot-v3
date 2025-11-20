@@ -1,7 +1,3 @@
-# Copyright (c) 2025 devgagan : https://github.com/devgaganin.
-# Licensed under the GNU General Public License v3.0.
-# See LICENSE file in the repository root for full license text.
-
 import os
 from dotenv import load_dotenv
 load_dotenv()
@@ -29,12 +25,12 @@ DB_NAME      = os.getenv("DB_NAME", "telegram_downloader")
 # ─── OWNER / CONTROL SETTINGS ───────────────────────────────────────────────────
 OWNER_ID     = list(map(int, os.getenv("OWNER_ID", "8023674811").split()))  # space-separated list
 STRING       = os.getenv("STRING", None)  # optional session string
-LOG_GROUP    = int(os.getenv("LOG_GROUP", "-1002923271655"))
-FORCE_SUB    = int(os.getenv("FORCE_SUB", "-1002386639561"))
+LOG_GROUP    = int(os.getenv("LOG_GROUP", "-1003370732509"))
+FORCE_SUB    = int(os.getenv("FORCE_SUB", "-1003270883989"))
 
 # ─── SECURITY KEYS ──────────────────────────────────────────────────────────────
-MASTER_KEY   = os.getenv("MASTER_KEY", "gK8HzLfT9QpViJcYeB5wRa3DmN7P2xUq")  # session encryption
-IV_KEY       = os.getenv("IV_KEY", "s7Yx5CpVmE3F")  # decryption key
+MASTER_KEY   = os.getenv("MASTER_KEY", "#M{U[]hS2B$glD5P~>l<{VR83(^@jj9u")  # session encryption
+IV_KEY       = os.getenv("IV_KEY", "r#!$<evz_9t~oM-%ZvYe'E%yh24[9V~&")  # decryption key
 
 # ─── COOKIES HANDLING ───────────────────────────────────────────────────────────
 YT_COOKIES   = os.getenv("YT_COOKIES", YTUB_COOKIES)

@@ -80,7 +80,12 @@ def get_display_name(user):
 
 
 def sanitize_filename(filename):
+    # Remove path separators and traversal
+    filename = filename.replace('/', '').replace('\\', '')
+    filename = filename.replace('..', '').replace('\0', '')
+    # Sanitize special chars
     return re.sub(r'[<>:"/\\|?*]', '_', filename)
+
 
 
 def get_dummy_filename(info):
@@ -119,7 +124,7 @@ async def get_user_data(user_id):
         user_data = await users_collection.find_one({"user_id": user_id})
         return user_data
     except Exception as e:
-   #     logger.error(f"Error retrieving user data for {user_id}: {e}")
+        logger.error(f"Error retrieving user data for {user_id}: {e}")
         return None
 
 
