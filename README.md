@@ -47,9 +47,6 @@ Please do start and max fork thanks
 - **`single`**: Process single link.
 - **`setbot`**: add your custome bot.
 - **`logout`**: 🚪 Get out of the bot.
-- **`adl`**: 👻 Download audio from 30+ sites.
-- **`dl`**: 💀 Download videos from 30+ sites.
-- **`transfer`**: 💘 Gift premium to others.
 - **`status`**: ⌛ Get your plan details.
 - **`add`**: ➕ Add user to premium.
 - **`rem`**: ➖ Remove user from premium.
@@ -58,7 +55,6 @@ Please do start and max fork thanks
 - **`settings`**: ⚙️ Personalize settings.
 - **`stats`**: 📊 Get stats of the bot.
 - **`plan`**: 🗓️ Check our premium plans.
-- **`terms`**: 🥺 Terms and conditions.
 - **`help`**: ❓ Help if you're new.
 - **`cancel`**: 🚫 Cancel batch process.
 
